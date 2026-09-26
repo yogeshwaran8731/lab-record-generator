@@ -2,12 +2,17 @@
 
 import React, { useRef, useEffect } from 'react';
 import { WizardStep } from '../types';
+import { OutputMediaInput } from './OutputMediaInput';
 import { Calendar, Sparkles, Minus, Plus, Code, Terminal, Info } from 'lucide-react';
 
 interface StepFieldProps {
   step: WizardStep;
   value: string;
+  imageValue?: string;
+  imagesValue?: string[];
   onChange: (value: string) => void;
+  onChangeImage?: (imageUri: string | undefined) => void;
+  onChangeImages?: (images: string[]) => void;
   onNext: () => void;
   error?: string | null;
 }
@@ -15,13 +20,17 @@ interface StepFieldProps {
 export const StepField: React.FC<StepFieldProps> = ({
   step,
   value,
+  imageValue,
+  imagesValue,
   onChange,
+  onChangeImage,
+  onChangeImages,
   onNext,
   error,
 }) => {
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
 
-  // Auto-focus when step changes
+  // Auto-focus when step changes (for non-output or standard inputs)
   useEffect(() => {
     if (inputRef.current) {
       inputRef.current.focus();
@@ -226,36 +235,51 @@ export const StepField: React.FC<StepFieldProps> = ({
         )}
 
         {step.type === 'code' && (
-          <div className="space-y-2">
-            <div className="relative rounded-lg border border-zinc-300 dark:border-zinc-700 overflow-hidden bg-zinc-950 text-zinc-100 shadow-inner">
-              <div className="flex items-center justify-between px-3 py-1.5 bg-zinc-900 border-b border-zinc-800 text-xs text-zinc-400">
-                <span className="flex items-center gap-1.5 font-mono">
-                  {step.key.includes('code') ? (
-                    <Code className="w-3.5 h-3.5 text-emerald-400" />
-                  ) : (
-                    <Terminal className="w-3.5 h-3.5 text-amber-400" />
-                  )}
-                  {step.key.includes('code') ? 'Source Code Editor' : 'Terminal Output'}
-                </span>
-                <span className="text-[11px] text-zinc-500">
-                  Tab key indents with 4 spaces
-                </span>
-              </div>
-              <textarea
-                id={step.key}
-                ref={inputRef as React.RefObject<HTMLTextAreaElement>}
-                rows={9}
+          <div>
+            {step.isOutputStep ? (
+              <OutputMediaInput
                 value={value}
-                onChange={(e) => onChange(e.target.value)}
-                onKeyDown={handleKeyDown}
+                images={imagesValue || (imageValue ? [imageValue] : [])}
                 placeholder={step.placeholder}
-                spellCheck={false}
-                className="w-full px-4 py-3 font-mono text-sm bg-transparent text-zinc-100 outline-none resize-y placeholder:text-zinc-600 leading-relaxed"
+                onChangeText={onChange}
+                onChangeImages={
+                  onChangeImages ||
+                  ((newImgs) => {
+                    if (onChangeImage) onChangeImage(newImgs[0] || undefined);
+                  })
+                }
+                onKeyDown={handleKeyDown}
+                inputRef={inputRef as React.RefObject<HTMLTextAreaElement>}
               />
-            </div>
-            <p className="text-xs text-zinc-400">
-              Indentation and line breaks will be preserved exactly in the Word document.
-            </p>
+            ) : (
+              <div className="space-y-2">
+                <div className="relative rounded-lg border border-zinc-300 dark:border-zinc-700 overflow-hidden bg-zinc-950 text-zinc-100 shadow-inner">
+                  <div className="flex items-center justify-between px-3 py-1.5 bg-zinc-900 border-b border-zinc-800 text-xs text-zinc-400">
+                    <span className="flex items-center gap-1.5 font-mono">
+                      <Code className="w-3.5 h-3.5 text-emerald-400" />
+                      Source Code Editor
+                    </span>
+                    <span className="text-[11px] text-zinc-500">
+                      Tab key indents with 4 spaces
+                    </span>
+                  </div>
+                  <textarea
+                    id={step.key}
+                    ref={inputRef as React.RefObject<HTMLTextAreaElement>}
+                    rows={9}
+                    value={value}
+                    onChange={(e) => onChange(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder={step.placeholder}
+                    spellCheck={false}
+                    className="w-full px-4 py-3 font-mono text-sm bg-transparent text-zinc-100 outline-none resize-y placeholder:text-zinc-600 leading-relaxed"
+                  />
+                </div>
+                <p className="text-xs text-zinc-400">
+                  Indentation and line breaks will be preserved exactly in the Word document.
+                </p>
+              </div>
+            )}
           </div>
         )}
       </div>

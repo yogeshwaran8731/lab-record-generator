@@ -22,6 +22,15 @@ export const ProgressHeader: React.FC<ProgressHeaderProps> = ({
   const progressPercent = Math.round(((currentStepIndex + 1) / totalSteps) * 100);
 
   const isStepCompleted = (step: WizardStep) => {
+    if (step.isOutputStep) {
+      const text = step.getValue(data);
+      const imgs = step.getImagesValue
+        ? step.getImagesValue(data)
+        : step.getImageValue && step.getImageValue(data)
+        ? [step.getImageValue(data)!]
+        : [];
+      return Boolean((text && text.trim().length > 0) || imgs.length > 0);
+    }
     const val = step.getValue(data);
     return typeof val === 'string' && val.trim().length > 0;
   };

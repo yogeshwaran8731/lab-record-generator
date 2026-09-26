@@ -168,13 +168,46 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
                 </div>
 
                 {/* Output */}
-                <div className="space-y-1">
+                <div className="space-y-1.5">
                   <span className="font-serif font-bold text-[11px] text-zinc-800 dark:text-zinc-200">
                     OUTPUT:
                   </span>
-                  <pre className="text-xs font-mono bg-zinc-100 dark:bg-zinc-950 p-2 rounded border border-zinc-200 dark:border-zinc-800 max-h-24 overflow-y-auto text-zinc-800 dark:text-zinc-300 whitespace-pre">
-                    {q.output || '—'}
-                  </pre>
+                  {(() => {
+                    const images = (q.outputImages && q.outputImages.length > 0)
+                      ? q.outputImages
+                      : (q.outputImage ? [q.outputImage] : []);
+
+                    return (
+                      <div className="space-y-3">
+                        {images.map((imgSrc, imgIdx) => (
+                          <div key={imgIdx} className="space-y-1">
+                            <div className="text-[10px] font-mono text-zinc-400 bg-zinc-50 dark:bg-zinc-950/40 px-2 py-0.5 rounded border border-zinc-200 dark:border-zinc-800 inline-block">
+                              [2 blank lines before picture {images.length > 1 ? `#${imgIdx + 1}` : ''}]
+                            </div>
+                            <div className="p-2 border border-zinc-200 dark:border-zinc-700 rounded-lg bg-zinc-950/80 flex items-center justify-center max-h-48 overflow-hidden">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={imgSrc}
+                                alt={`Question ${idx + 1} Output Screenshot ${imgIdx + 1}`}
+                                className="max-h-44 object-contain rounded"
+                              />
+                            </div>
+                            <div className="text-[10px] font-mono text-zinc-400 bg-zinc-50 dark:bg-zinc-950/40 px-2 py-0.5 rounded border border-zinc-200 dark:border-zinc-800 inline-block">
+                              [2 blank lines after picture {images.length > 1 ? `#${imgIdx + 1}` : ''}]
+                            </div>
+                          </div>
+                        ))}
+                        {q.output && (
+                          <pre className="text-xs font-mono bg-zinc-100 dark:bg-zinc-950 p-2 rounded border border-zinc-200 dark:border-zinc-800 max-h-24 overflow-y-auto text-zinc-800 dark:text-zinc-300 whitespace-pre">
+                            {q.output}
+                          </pre>
+                        )}
+                        {images.length === 0 && !q.output && (
+                          <p className="text-xs text-zinc-400 italic">No output provided</p>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {idx < data.questions.length - 1 && (

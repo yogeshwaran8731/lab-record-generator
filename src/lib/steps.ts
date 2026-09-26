@@ -7,6 +7,7 @@ export function createEmptyQuestion(questionNumber: number): QuestionItem {
     questionText: '',
     sourceCode: '',
     output: '',
+    outputImages: [],
   };
 }
 
@@ -261,15 +262,42 @@ export function getWizardSteps(data: LabRecordData): WizardStep[] {
       title: `Question ${qNum}: Output`,
       shortLabel: `Q${qNum} Output`,
       category: `Question ${qNum} of ${qCount}`,
-      description: `Paste the execution output or terminal results for Question ${qNum}.`,
+      description: `Paste terminal output text and/or upload multiple pictures from your device with free-form crop & edit tools.`,
       placeholder: `Execution output for Question ${qNum}...`,
       type: 'code',
-      helperTip: `Placed under Question ${qNum} -> OUTPUT: heading. Followed by 2 blank lines.`,
+      helperTip: `Placed under Question ${qNum} -> OUTPUT: heading. Each output picture is formatted with 2 blank lines before and after.`,
+      isOutputStep: true,
+      questionIndex: i,
       getValue: (d) => d.questions[i]?.output || '',
       setValue: (d, v) => {
         const updated = [...d.questions];
         if (!updated[i]) updated[i] = createEmptyQuestion(qNum);
         updated[i] = { ...updated[i], output: v };
+        return { ...d, questions: updated };
+      },
+      getImagesValue: (d): string[] => {
+        const q = d.questions[i];
+        if (q && q.outputImages && q.outputImages.length > 0) {
+          return q.outputImages;
+        }
+        if (q && q.outputImage) {
+          return [q.outputImage];
+        }
+        return [];
+      },
+      setImagesValue: (d, imgs) => {
+        const updated = [...d.questions];
+        if (!updated[i]) updated[i] = createEmptyQuestion(qNum);
+        updated[i] = { ...updated[i], outputImages: imgs, outputImage: imgs[0] };
+        return { ...d, questions: updated };
+      },
+      getImageValue: (d) => d.questions[i]?.outputImage,
+      setImageValue: (d, imgUri) => {
+        const updated = [...d.questions];
+        if (!updated[i]) updated[i] = createEmptyQuestion(qNum);
+        const currentImgs = updated[i].outputImages || [];
+        const nextImgs = imgUri ? [...currentImgs, imgUri] : [];
+        updated[i] = { ...updated[i], outputImages: nextImgs, outputImage: imgUri };
         return { ...d, questions: updated };
       },
     });

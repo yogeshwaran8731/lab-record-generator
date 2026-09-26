@@ -4,6 +4,8 @@ export interface QuestionItem {
   questionText: string;
   sourceCode: string;
   output: string;
+  outputImages?: string[]; // Array of base64 data URLs
+  outputImage?: string; // Backwards compatibility for single image
 }
 
 export interface LabRecordData {
@@ -29,6 +31,12 @@ export interface WizardStep {
   placeholder: string;
   type: WizardStepType;
   helperTip?: string;
+  isOutputStep?: boolean;
+  questionIndex?: number;
   getValue: (data: LabRecordData) => string;
   setValue: (data: LabRecordData, value: string) => LabRecordData;
+  getImagesValue?: (data: LabRecordData) => string[];
+  setImagesValue?: (data: LabRecordData, images: string[]) => LabRecordData;
+  getImageValue?: (data: LabRecordData) => string | undefined;
+  setImageValue?: (data: LabRecordData, imageUri: string | undefined) => LabRecordData;
 }

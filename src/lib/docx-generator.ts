@@ -6,6 +6,7 @@ import {
   TableRow,
   TableCell,
   TextRun,
+  ImageRun,
   AlignmentType,
   WidthType,
   BorderStyle,
@@ -19,6 +20,7 @@ import {
   PageBorderZOrder,
 } from 'docx';
 import { LabRecordData } from '../types/index';
+import { parseDataUrlImage } from './image-utils';
 
 /**
  * Converts multiline text into an array of docx Paragraphs.
@@ -163,11 +165,12 @@ function createResultBottomTable(resultText: string): Table {
 /**
  * Generates the complete docx Document matching the reference template:
  * - Page border box on ALL pages
- * - Header table matching image
+ * - Header table matching reference image
  * - Dynamic questions with 2 blank lines between each
+ * - Picture below "OUTPUT:" with 2 lines space before and after
  * - RESULT pinned to the bottom-most margin of the last page
  */
-export function generateLabRecordDocument(data: LabRecordData): Document {
+export async function generateLabRecordDocument(data: LabRecordData): Promise<Document> {
   // Common cell border definition (solid single border matching image)
   const cellBorder = {
     style: BorderStyle.SINGLE,
@@ -323,7 +326,8 @@ export function generateLabRecordDocument(data: LabRecordData): Document {
     ? data.questions
     : [];
 
-  questionsList.forEach((q, index) => {
+  for (let index = 0; index < questionsList.length; index++) {
+    const q = questionsList[index];
     const isMultiQuestion = questionsList.length > 1;
 
     // Heading: Question 1, Question 2, etc.
@@ -341,18 +345,84 @@ export function generateLabRecordDocument(data: LabRecordData): Document {
       ...createContentParagraphs(q.sourceCode, { preserveIndentation: true })
     );
 
-    // OUTPUT: (Terminal output with preserved line breaks)
+    // OUTPUT:
     docChildren.push(createSectionHeading('OUTPUT:', 240, 0));
-    docChildren.push(
-      ...createContentParagraphs(q.output, { preserveIndentation: true })
-    );
+
+    // Collect all output pictures for this question
+    const imagesToEmbed =
+      q.outputImages && q.outputImages.length > 0
+        ? q.outputImages
+        : q.outputImage && q.outputImage.trim().length > 0
+        ? [q.outputImage]
+        : [];
+
+    for (const imgDataUrl of imagesToEmbed) {
+      if (!imgDataUrl || imgDataUrl.trim().length === 0) continue;
+
+      // 2 lines space before image
+      docChildren.push(createEmptyLine());
+      docChildren.push(createEmptyLine());
+
+      try {
+        const { bytes, width, height } = await parseDataUrlImage(imgDataUrl);
+
+        // Calculate proportional scale to fit within standard document page margins (~460pt)
+        const maxWidth = 460;
+        let scaledWidth = width;
+        let scaledHeight = height;
+
+        if (scaledWidth > maxWidth) {
+          const ratio = maxWidth / scaledWidth;
+          scaledWidth = maxWidth;
+          scaledHeight = Math.round(scaledHeight * ratio);
+        }
+
+        // Cap height to 420pt to ensure it fits comfortably on page
+        const maxHeight = 420;
+        if (scaledHeight > maxHeight) {
+          const ratio = maxHeight / scaledHeight;
+          scaledHeight = maxHeight;
+          scaledWidth = Math.round(scaledWidth * ratio);
+        }
+
+        docChildren.push(
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { before: 0, after: 0, line: 240 },
+            children: [
+              new ImageRun({
+                type: 'png',
+                data: bytes,
+                transformation: {
+                  width: scaledWidth,
+                  height: scaledHeight,
+                },
+              }),
+            ],
+          })
+        );
+      } catch (err) {
+        console.error('Failed to embed output image into Word document:', err);
+      }
+
+      // 2 lines space after image
+      docChildren.push(createEmptyLine());
+      docChildren.push(createEmptyLine());
+    }
+
+    // Accompanying console text output (if entered)
+    if (q.output && q.output.trim().length > 0) {
+      docChildren.push(
+        ...createContentParagraphs(q.output, { preserveIndentation: true })
+      );
+    }
 
     // Two blank lines between questions (as specified: "then leave two lines between each question")
     if (index < questionsList.length - 1) {
       docChildren.push(createEmptyLine());
       docChildren.push(createEmptyLine());
     }
-  });
+  }
 
   // RESULT (always anchored at the bottom-most margin of the last page)
   docChildren.push(createResultBottomTable(data.result));
@@ -400,7 +470,7 @@ export function generateLabRecordDocument(data: LabRecordData): Document {
  * Filename format: Ex-<exerciseNo>-<regNo>.docx
  */
 export async function downloadLabRecordDocx(data: LabRecordData): Promise<string> {
-  const doc = generateLabRecordDocument(data);
+  const doc = await generateLabRecordDocument(data);
   const blob = await Packer.toBlob(doc);
 
   const cleanEx = (data.exerciseNo || '1').trim().replace(/[^a-zA-Z0-9_-]/g, '_');

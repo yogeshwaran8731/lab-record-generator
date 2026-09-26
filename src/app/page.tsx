@@ -43,6 +43,23 @@ export default function LabRecordGeneratorPage() {
 
   // Validate current step
   const validateCurrentStep = (): boolean => {
+    if (currentStep.isOutputStep) {
+      const textVal = currentStep.getValue(data);
+      const imgs = currentStep.getImagesValue
+        ? currentStep.getImagesValue(data)
+        : currentStep.getImageValue && currentStep.getImageValue(data)
+        ? [currentStep.getImageValue(data)!]
+        : [];
+      const hasText = Boolean(textVal && textVal.trim().length > 0);
+      const hasImage = Boolean(imgs.length > 0);
+      if (!hasText && !hasImage) {
+        setError('Please provide terminal output text or attach at least one picture.');
+        return false;
+      }
+      setError(null);
+      return true;
+    }
+
     const val = currentStep.getValue(data);
     if (!val || val.trim().length === 0) {
       setError(`"${currentStep.title}" is required.`);
@@ -188,7 +205,21 @@ export default function LabRecordGeneratorPage() {
             <StepField
               step={currentStep}
               value={currentStep.getValue(data)}
+              imageValue={currentStep.getImageValue ? currentStep.getImageValue(data) : undefined}
+              imagesValue={currentStep.getImagesValue ? currentStep.getImagesValue(data) : undefined}
               onChange={handleFieldChange}
+              onChangeImage={(imgUri) => {
+                if (currentStep.setImageValue) {
+                  setData((prev) => currentStep.setImageValue!(prev, imgUri));
+                }
+                if (error) setError(null);
+              }}
+              onChangeImages={(newImgs) => {
+                if (currentStep.setImagesValue) {
+                  setData((prev) => currentStep.setImagesValue!(prev, newImgs));
+                }
+                if (error) setError(null);
+              }}
               onNext={handleNext}
               error={error}
             />
